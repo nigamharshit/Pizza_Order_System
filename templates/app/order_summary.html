@@ -1,0 +1,41 @@
+{% extends 'app/base.html' %}
+{% block title %}Order Summary{% endblock %}
+{% block body %}
+    <div class="p-3 mb-2 bg-dark text-white">
+        <h2>Order Summary</h2>
+        <p>Order ID: <span id="order_id">{{ order_details.order_id }}</span></p>
+        <p>Status: <span id="order_status">{{ order_details.status }}</span></p>
+        <p>Total Price: <span id="total_price">{{ order_details.total_price }}</span></p>
+        <h5>Cart Details :</h5>
+        {% for order in order_details.cart_details %}
+            <div class="border border-white">
+                <p>Selected Pizza :<span>{{ order.selected_pizza }}</span></p>
+                <p>Selected Base :<span>{{ order.selected_base }}</span></p>
+                <p>Selected Cheese :<span>{{ order.selected_cheese }}</span></p>
+                <p>Selected Toppings :<ul>{% for topping in order.selected_toppings %}<li>{{ topping }}</li>{% endfor %}</ul></p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        function getOrderStatus() {
+        var orderId = document.getElementById('order_id').innerText;
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    var status = JSON.parse(xhr.responseText).status;
+                    console.log('Received status:', status);
+                    document.getElementById('order_status').innerText = status;
+                } else {
+                    console.log('Request failed with status:', xhr.status);
+                }
+            }
+        };
+        xhr.open('GET', '/get_order_status/' + orderId + '/', true);
+        xhr.send();
+    }
+
+    setInterval(getOrderStatus, 10000);
+    </script>
+{% endblock %}

@@ -1,0 +1,153 @@
+{% extends 'app/base.html' %}
+{% block title %}Pizzeria{% endblock %}
+{% block body %}
+<div style="text-align: center;">
+    <h2>Pizzeria Online Order</h2>
+</div>
+
+<form onsubmit="addToCart(); return false;">
+    {% csrf_token %}
+    <div style="text-align: center;">
+        <h3 for="pizza">Choose a Pizza:</h3>
+        <select class="form-select form-select-lg mb-3" aria-label="Large select example" name="pizza" id="pizza">
+            {% for pizza in pizzas %}
+                <option value="{{ pizza.id }}">{{ pizza.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="text-align: center;">
+        <h3>Choose Pizza Base:</h3>
+        {% for base in pizza_bases %}
+            <input type="radio" id="base_{{ base.id }}" name="base" value="{{ base.id }}">
+            <label for="base_{{ base.id }}">{{ base.name }}</label>
+        {% endfor %}
+    </div>
+
+    <div style="text-align: center;">
+        <h3>Choose Type of Cheese:</h3>
+        {% for cheese in cheeses %}
+            <input type="radio" id="cheese_{{ cheese.id }}" name="cheese" value="{{ cheese.id }}">
+            <label for="cheese_{{ cheese.id }}">{{ cheese.name }}</label>
+        {% endfor %}
+    </div>
+
+    <div style="text-align: center;">
+        <h5>Choose 5 Toppings:</h5>
+        {% for topping in toppings %}
+            <input type="checkbox" id="topping_{{ topping.id }}" name="topping" value="{{ topping.id }}" onclick="limitSelection()">
+            <label for="topping_{{ topping.id }}">{{ topping.name }}</label><br>
+        {% endfor %}
+    </div>
+
+    <div style="text-align: center;">
+        <button type="button" onclick="addToCart()" class="btn btn-success d-grid gap-2 col-6 mx-auto mb-2">Add to Cart</button>
+    </div>
+</form>
+
+<form onsubmit="generateOrder(); return false;">
+    {% csrf_token %}
+    <div style="text-align: center;">
+        <button type="button" onclick="generateOrder()" class="btn btn-success d-grid gap-2 col-6 mx-auto">Generate Order</button>
+    </div>
+</form>
+
+<script>
+    var pizzas = []; // Array to store selected pizzas
+
+    // To add pizza in cart
+    function addToCart() {
+    // Retrieve existing pizzas from local storage or initialize an empty array
+    const pizzasInCart = JSON.parse(localStorage.getItem("pizzasInCart")) || [];
+
+    const pizzaDropdown = document.getElementById("pizza");
+    const pizzaName = pizzaDropdown.options[pizzaDropdown.selectedIndex].text;
+
+    const pizzaBase = document.querySelector('input[name="base"]:checked').value;
+    const pizzaCheese = document.querySelector('input[name="cheese"]:checked').value;
+
+    const pizzaToppings = document.querySelectorAll('input[name="topping"]:checked');
+    const selectedToppings = Array.from(pizzaToppings).map(topping => topping.value);
+
+    const pizzaOrder = {
+        name: pizzaName,
+        base: pizzaBase,
+        cheese: pizzaCheese,
+        toppings: selectedToppings,
+    };
+
+    // Push the new pizza order to the existing pizzas array
+    pizzasInCart.push(pizzaOrder);
+
+    // Store the updated pizzas array in local storage
+    localStorage.setItem("pizzasInCart", JSON.stringify(pizzasInCart));
+
+    alert("Pizza added to your order!");
+    }
+
+    // To generate order
+    function generateOrder() {
+    // Retrieve stored pizzas from local storage
+    const pizzasInCart = JSON.parse(localStorage.getItem("pizzasInCart"));
+
+    // Check if there are pizzas in the cart
+    if (pizzasInCart && pizzasInCart.length > 0) {
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+        // Send the pizzas data to the backend 
+        fetch('http://192.168.1.48:8000/order/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ pizzas: pizzasInCart }),
+        }).then(response => response.text()) // Parse the HTML response
+        .then(html => {
+            document.open();
+            document.write(html);
+            document.close();
+
+            // Remove the pizzasInCart from local storage
+            localStorage.removeItem("pizzasInCart");
+        }).catch(error => {
+            console.error('Error sending order to Django backend:', error);
+        });
+    } else {
+        console.log("No pizzas in the cart.");
+    }
+    }
+
+    // To limit 5 toppings
+    function limitSelection() {
+        var checkboxes = document.querySelectorAll('input[name="topping"]:checked');
+        if (checkboxes.length > 5) {
+            alert("Please select only 5 toppings.");
+            event.preventDefault();
+        }
+    }
+
+    // To reset form if pizza changed
+    function resetForm() {
+        var checkboxes = document.querySelectorAll('input[name="topping"]:checked');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.checked = false;
+        });
+
+        var bases = document.querySelectorAll('input[name="base"]:checked');
+        bases.forEach(function(base) {
+            base.checked = false;
+        });
+
+        var cheeses = document.querySelectorAll('input[name="cheese"]:checked');
+        cheeses.forEach(function(cheese) {
+            cheese.checked = false;
+        });
+    }
+
+    document.getElementById('pizza').addEventListener('change', function() {
+        resetForm();
+    });
+</script>
+
+{% endblock %}

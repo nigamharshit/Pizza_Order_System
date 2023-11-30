@@ -1,0 +1,49 @@
+version: "3.8"
+services:
+  app:
+    build: .
+    volumes:
+      - .:/django
+    ports:
+      - 8000:8000
+    image: app:django
+    container_name: django_container
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      - redis  # Depend on the Redis service
+      - celery_worker  # Depend on the Celery worker service
+      - mysql-db   # Depends on database
+    environment:
+      DATABASE_URL: "mysql://pizzeria:pizzeria@mysql-db:3306/pizzeria_db"  # New line - database connection URL
+
+  redis:
+    image: redis
+    container_name: redis_container
+    ports:
+      - 6379:6379  # Expose Redis port if needed
+
+  celery_worker:
+    build: .
+    volumes:
+      - .:/django
+    command: celery -A pizzeria worker --loglevel=info
+    depends_on:
+      - redis  # Depend on the Redis service
+
+  mysql-db:
+    image: mysql:latest
+    container_name: my-mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: pizzeria
+      MYSQL_DATABASE: pizzeria_db
+      MYSQL_USER: pizzeria
+      MYSQL_PASSWORD: pizzeria
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
+    driver: local
